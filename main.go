@@ -1,0 +1,155 @@
+package main
+
+import (
+	"fmt"
+	"image/color"
+	"machine"
+	"machine/usb/adc/midi"
+	"strconv"
+	"time"
+
+	"tinygo.org/x/drivers/encoders"
+	"tinygo.org/x/drivers/ssd1306"
+	"tinygo.org/x/drivers/ws2812"
+	"tinygo.org/x/tinyfont"
+	"tinygo.org/x/tinyfont/freesans"
+)
+
+var (
+	neo     machine.Pin
+	leds    [2]color.RGBA
+	voltage = 3.3 / 65535
+	enc     = encoders.NewQuadratureViaInterrupt(machine.GPIO10, machine.GPIO11)
+	columns = [4]machine.Pin{
+		machine.GPIO0,
+		machine.GPIO1,
+		machine.GPIO2,
+		machine.GPIO3,
+	}
+	rows = [4]machine.Pin{
+		machine.GPIO4,
+		machine.GPIO5,
+		machine.GPIO6,
+		machine.GPIO7,
+	}
+)
+
+var notes = [4][4]midi.Note{
+	{midi.C1, midi.C2, midi.C3, midi.C4},
+	{midi.D1, midi.D2, midi.D3, midi.D4},
+	{midi.E1, midi.E2, midi.E3, midi.E4},
+	{midi.F1, midi.F2, midi.F3, midi.F4},
+}
+
+func readPads() {
+	for i := range columns {
+		columns[i].Configure(machine.PinConfig{Mode: machine.PinMode(machine.PinOutput)})
+	}
+
+	for i := range rows {
+		rows[i].Configure(machine.PinConfig{Mode: machine.PinInputPulldown})
+	}
+
+	for {
+
+		for i := range columns {
+
+			columns[i].High()
+			time.Sleep(20 * time.Millisecond)
+
+			for j := range rows {
+				if columns[i].Get() && rows[j].Get() {
+					fmt.Println("Coluna: ", i, " Linha: ", j) // Logica de um teclado mecanico
+					// Idealmente o acorde deveria ser tocado uma vez
+					// Uma boa oportunidade para gerar um channel
+					// Ou inclui um estado para a nota
+				}
+			}
+			columns[i].Low()
+		}
+
+	}
+}
+
+func blinkBuiltInLed() {
+	led := machine.LED
+	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
+
+	for {
+		time.Sleep(200 * time.Millisecond)
+		led.High()
+		time.Sleep(200 * time.Millisecond)
+		led.Low()
+	}
+}
+
+func newSSD1306Display() *ssd1306.Device {
+
+	machine.I2C0.Configure(machine.I2CConfig{
+		Frequency: 400 * machine.KHz,
+		SDA:       machine.GPIO16,
+		SCL:       machine.GPIO17,
+	})
+
+	display := ssd1306.NewI2C(machine.I2C0)
+
+	display.Configure(ssd1306.Config{
+		Address: ssd1306.Address_128_32, // or ssd1306.Address
+		Width:   128,
+		Height:  32, // or 64
+	})
+
+	return display
+}
+
+func main() {
+
+	device := newSSD1306Display()
+	device.ClearDisplay()
+
+	enc.Configure(encoders.QuadratureConfig{
+		Precision: 4,
+	})
+
+	sw := machine.GPIO12
+	sw.Configure(machine.PinConfig{Mode: machine.PinInputPullup})
+
+	neo := machine.GPIO15
+	neo.Configure(machine.PinConfig{Mode: machine.PinOutput})
+	ws := ws2812.NewWS2812(neo)
+	leds[0] = color.RGBA{R: 0, G: 223, B: 197}
+	leds[1] = color.RGBA{R: 255, G: 100, B: 0}
+
+	ws.WriteColors(leds[:])
+
+	machine.InitADC()
+	sensorA := machine.ADC{Pin: machine.ADC0}
+	sensorA.Configure(machine.ADCConfig{})
+
+	sensorB := machine.ADC{Pin: machine.ADC1}
+	sensorB.Configure(machine.ADCConfig{})
+
+	sensorC := machine.ADC{Pin: machine.ADC2}
+	sensorC.Configure(machine.ADCConfig{})
+
+	go blinkBuiltInLed()
+	go readPads()
+
+	for oldValue := 0; ; {
+		fmt.Println("Valor ADC sensorA: ", float32(float64(sensorA.Get())*voltage))
+		fmt.Println("Valor ADC sensorB: ", float32(float64(sensorB.Get())*voltage))
+		fmt.Println("Valor ADC sensorC: ", float32(float64(sensorC.Get())*voltage))
+		fmt.Println("SW Encoder: ", !sw.Get())
+
+		if newValue := enc.Position(); newValue != oldValue {
+			device.ClearDisplay()
+			oldValue = newValue
+		}
+		device.Display()
+
+		tinyfont.WriteLine(device, &freesans.Bold18pt7b, 0, 31, strconv.Itoa(oldValue), color.RGBA{255, 255, 255, 1})
+		fmt.Println("value: ", oldValue)
+		time.Sleep(200 * time.Millisecond)
+
+	}
+}
