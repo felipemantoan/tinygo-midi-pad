@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const SCAN_TIME = 5_000_000
+
 type Matrix interface {
 	Config() MatrixConfig
 	Cell(column int, row int) Cell
@@ -44,21 +46,25 @@ func (m *matrixImpl) Config() MatrixConfig {
 	return m.config
 }
 
-func (m *matrixImpl) Scan() {
+func (m *matrixImpl) scanMainLoop() {
 	for {
 		for i, column := range m.config.Columns() {
 			column.High()
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(SCAN_TIME)
 
 			for j := range m.config.Rows() {
 
 				if m.Cell(j, i).HasChange() {
 					// debug
-					fmt.Println(m.Cell(j, i).ID())
+					fmt.Println(m.Cell(j, i).ID()) // call to action
 				}
 			}
 
 			column.Low()
 		}
 	}
+}
+
+func (m *matrixImpl) Scan() {
+	go m.scanMainLoop()
 }

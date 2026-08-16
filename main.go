@@ -33,6 +33,7 @@ var (
 		machine.GPIO6,
 		machine.GPIO7,
 	}
+	noiseADC = 0.025
 )
 
 var notes = [4][4]midi.Note{
@@ -41,36 +42,6 @@ var notes = [4][4]midi.Note{
 	{midi.E1, midi.E2, midi.E3, midi.E4},
 	{midi.F1, midi.F2, midi.F3, midi.F4},
 }
-
-// func readPads() {
-// 	for i := range columns {
-// 		columns[i].Configure(machine.PinConfig{Mode: machine.PinMode(machine.PinOutput)})
-// 	}
-
-// 	for i := range rows {
-// 		rows[i].Configure(machine.PinConfig{Mode: machine.PinInputPulldown})
-// 	}
-
-// 	for {
-
-// 		for i := range columns {
-
-// 			columns[i].High()
-// 			time.Sleep(20 * time.Millisecond)
-
-// 			for j := range rows {
-// 				if columns[i].Get() && rows[j].Get() {
-// 					fmt.Println("Coluna: ", i, " Linha: ", j) // Logica de um teclado mecanico
-// 					// Idealmente o acorde deveria ser tocado uma vez
-// 					// Uma boa oportunidade para gerar um channel
-// 					// Ou inclui um estado para a nota
-// 				}
-// 			}
-// 			columns[i].Low()
-// 		}
-
-// 	}
-// }
 
 func blinkBuiltInLed() {
 	led := machine.LED
@@ -135,25 +106,26 @@ func main() {
 	sensorC.Configure(machine.ADCConfig{})
 
 	go blinkBuiltInLed()
+
 	matrix := matrix.New(matrix.Configure(rows[:], columns[:]))
-	go matrix.Scan()
+	matrix.Scan()
 
 	for oldValue := 0; ; {
 		adc0Value := float64(sensorA.Get()) * voltage
 		adc1Value := float64(sensorB.Get()) * voltage
 		adc2Value := float64(sensorC.Get()) * voltage
 
-		if adc0Value > 0.025 {
+		if adc0Value > noiseADC {
 			fmt.Println("Valor ADC sensorA: ", adc0Value)
 
 		}
 
-		if adc1Value > 0.025 {
+		if adc1Value > noiseADC {
 			fmt.Println("Valor ADC sensorB: ", adc1Value)
 
 		}
 
-		if adc2Value > 0.025 {
+		if adc2Value > noiseADC {
 			fmt.Println("Valor ADC sensorC: ", adc2Value)
 
 		}
@@ -168,7 +140,7 @@ func main() {
 
 		tinyfont.WriteLine(device, &freesans.Bold18pt7b, 0, 31, strconv.Itoa(oldValue), color.RGBA{255, 255, 255, 1})
 		// fmt.Println("value: ", oldValue)
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 
 	}
 }
