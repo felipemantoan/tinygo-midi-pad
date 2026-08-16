@@ -143,17 +143,17 @@ func main() {
 		adc1Value := float64(sensorB.Get()) * voltage
 		adc2Value := float64(sensorC.Get()) * voltage
 
-		if adc0Value > 0.02 {
+		if adc0Value > 0.025 {
 			fmt.Println("Valor ADC sensorA: ", adc0Value)
 
 		}
 
-		if adc1Value > 0.02 {
+		if adc1Value > 0.025 {
 			fmt.Println("Valor ADC sensorB: ", adc1Value)
 
 		}
 
-		if adc2Value > 0.02 {
+		if adc2Value > 0.025 {
 			fmt.Println("Valor ADC sensorC: ", adc2Value)
 
 		}

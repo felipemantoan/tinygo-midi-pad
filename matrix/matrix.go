@@ -25,7 +25,7 @@ func New(config MatrixConfig) Matrix {
 		cells[i] = make([]Cell, len(config.Columns()))
 
 		for j, column := range config.Columns() {
-			cells[i][j] = &cellImpl{id: id, column: column, row: row, state: false}
+			cells[i][j] = newCell(id, column, row)
 			id++
 		}
 	}
@@ -50,8 +50,9 @@ func (m *matrixImpl) Scan() {
 			column.High()
 			time.Sleep(20 * time.Millisecond)
 
-			for j, row := range m.config.Rows() {
-				if column.Get() && row.Get() {
+			for j := range m.config.Rows() {
+
+				if m.Cell(j, i).HasChange() {
 					// debug
 					fmt.Println(m.Cell(j, i).ID())
 				}
@@ -60,8 +61,4 @@ func (m *matrixImpl) Scan() {
 			column.Low()
 		}
 	}
-}
-
-func (m *matrixImpl) SetInterrupt(f func(c Cell)) {
-
 }
