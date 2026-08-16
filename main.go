@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/felipemantoan/tinygo-midi-pad/matrix"
 	"tinygo.org/x/drivers/encoders"
 	"tinygo.org/x/drivers/ssd1306"
 	"tinygo.org/x/drivers/ws2812"
@@ -19,7 +20,7 @@ var (
 	neo     machine.Pin
 	leds    [2]color.RGBA
 	voltage = 3.3 / 65535
-	enc     = encoders.NewQuadratureViaInterrupt(machine.GPIO10, machine.GPIO11)
+	enc     = encoders.NewQuadratureViaInterrupt(machine.GPIO19, machine.GPIO20)
 	columns = [4]machine.Pin{
 		machine.GPIO0,
 		machine.GPIO1,
@@ -41,44 +42,44 @@ var notes = [4][4]midi.Note{
 	{midi.F1, midi.F2, midi.F3, midi.F4},
 }
 
-func readPads() {
-	for i := range columns {
-		columns[i].Configure(machine.PinConfig{Mode: machine.PinMode(machine.PinOutput)})
-	}
+// func readPads() {
+// 	for i := range columns {
+// 		columns[i].Configure(machine.PinConfig{Mode: machine.PinMode(machine.PinOutput)})
+// 	}
 
-	for i := range rows {
-		rows[i].Configure(machine.PinConfig{Mode: machine.PinInputPulldown})
-	}
+// 	for i := range rows {
+// 		rows[i].Configure(machine.PinConfig{Mode: machine.PinInputPulldown})
+// 	}
 
-	for {
+// 	for {
 
-		for i := range columns {
+// 		for i := range columns {
 
-			columns[i].High()
-			time.Sleep(20 * time.Millisecond)
+// 			columns[i].High()
+// 			time.Sleep(20 * time.Millisecond)
 
-			for j := range rows {
-				if columns[i].Get() && rows[j].Get() {
-					fmt.Println("Coluna: ", i, " Linha: ", j) // Logica de um teclado mecanico
-					// Idealmente o acorde deveria ser tocado uma vez
-					// Uma boa oportunidade para gerar um channel
-					// Ou inclui um estado para a nota
-				}
-			}
-			columns[i].Low()
-		}
+// 			for j := range rows {
+// 				if columns[i].Get() && rows[j].Get() {
+// 					fmt.Println("Coluna: ", i, " Linha: ", j) // Logica de um teclado mecanico
+// 					// Idealmente o acorde deveria ser tocado uma vez
+// 					// Uma boa oportunidade para gerar um channel
+// 					// Ou inclui um estado para a nota
+// 				}
+// 			}
+// 			columns[i].Low()
+// 		}
 
-	}
-}
+// 	}
+// }
 
 func blinkBuiltInLed() {
 	led := machine.LED
 	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
 
 	for {
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 		led.High()
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 		led.Low()
 	}
 }
@@ -111,12 +112,13 @@ func main() {
 		Precision: 4,
 	})
 
-	sw := machine.GPIO12
+	sw := machine.GPIO21
 	sw.Configure(machine.PinConfig{Mode: machine.PinInputPullup})
 
-	neo := machine.GPIO15
+	neo := machine.GPIO18
 	neo.Configure(machine.PinConfig{Mode: machine.PinOutput})
 	ws := ws2812.NewWS2812(neo)
+	ws.SetBrightness(50)
 	leds[0] = color.RGBA{R: 0, G: 223, B: 197}
 	leds[1] = color.RGBA{R: 255, G: 100, B: 0}
 
@@ -133,13 +135,30 @@ func main() {
 	sensorC.Configure(machine.ADCConfig{})
 
 	go blinkBuiltInLed()
-	go readPads()
+	matrix := matrix.New(matrix.Configure(rows[:], columns[:]))
+	go matrix.Scan()
 
 	for oldValue := 0; ; {
-		fmt.Println("Valor ADC sensorA: ", float32(float64(sensorA.Get())*voltage))
-		fmt.Println("Valor ADC sensorB: ", float32(float64(sensorB.Get())*voltage))
-		fmt.Println("Valor ADC sensorC: ", float32(float64(sensorC.Get())*voltage))
-		fmt.Println("SW Encoder: ", !sw.Get())
+		adc0Value := float64(sensorA.Get()) * voltage
+		adc1Value := float64(sensorB.Get()) * voltage
+		adc2Value := float64(sensorC.Get()) * voltage
+
+		if adc0Value > 0.02 {
+			fmt.Println("Valor ADC sensorA: ", adc0Value)
+
+		}
+
+		if adc1Value > 0.02 {
+			fmt.Println("Valor ADC sensorB: ", adc1Value)
+
+		}
+
+		if adc2Value > 0.02 {
+			fmt.Println("Valor ADC sensorC: ", adc2Value)
+
+		}
+
+		// fmt.Println("SW Encoder: ", !sw.Get())
 
 		if newValue := enc.Position(); newValue != oldValue {
 			device.ClearDisplay()
@@ -148,8 +167,8 @@ func main() {
 		device.Display()
 
 		tinyfont.WriteLine(device, &freesans.Bold18pt7b, 0, 31, strconv.Itoa(oldValue), color.RGBA{255, 255, 255, 1})
-		fmt.Println("value: ", oldValue)
-		time.Sleep(200 * time.Millisecond)
+		// fmt.Println("value: ", oldValue)
+		time.Sleep(50 * time.Millisecond)
 
 	}
 }
