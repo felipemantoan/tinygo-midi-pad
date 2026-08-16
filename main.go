@@ -48,9 +48,9 @@ func blinkBuiltInLed() {
 	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
 
 	for {
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		led.High()
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		led.Low()
 	}
 }
