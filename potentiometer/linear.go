@@ -38,5 +38,4 @@ func Scan() {
 			fmt.Println("Pin: ", i, " Value: ", pinValue)
 		}
 	}
-
 }

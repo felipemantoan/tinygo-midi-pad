@@ -48,6 +48,23 @@ func (m *matrixImpl) Config() MatrixConfig {
 	return m.config
 }
 
+func (m *matrixImpl) scanMainLoop() {
+	for {
+		for i, column := range m.config.Columns() {
+			column.High()
+			time.Sleep(SCAN_TIME)
+
+			for j := range m.config.Rows() {
+				if m.callback != nil {
+					m.interrupt(j, i)
+				}
+			}
+
+			column.Low()
+		}
+	}
+}
+
 func (m *matrixImpl) SetInterrupt(change CellChange, callback func(c Cell)) {
 	m.callBackType = change
 	m.callback = callback
@@ -62,16 +79,5 @@ func (m *matrixImpl) interrupt(row int, column int) {
 }
 
 func (m *matrixImpl) Scan() {
-	for i, column := range m.config.Columns() {
-		column.High()
-		time.Sleep(SCAN_TIME)
-
-		for j := range m.config.Rows() {
-			if m.callback != nil {
-				m.interrupt(j, i)
-			}
-		}
-
-		column.Low()
-	}
+	go m.scanMainLoop()
 }

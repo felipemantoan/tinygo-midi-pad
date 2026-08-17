@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/felipemantoan/tinygo-midi-pad/matrix"
+	"github.com/felipemantoan/tinygo-midi-pad/potentiometer"
 	"tinygo.org/x/drivers/encoders"
 	"tinygo.org/x/drivers/ssd1306"
 	"tinygo.org/x/drivers/ws2812"
@@ -19,7 +20,6 @@ import (
 var (
 	neo     machine.Pin
 	leds    [2]color.RGBA
-	voltage = 3.3 / 65535
 	enc     = encoders.NewQuadratureViaInterrupt(machine.GPIO19, machine.GPIO20)
 	columns = [4]machine.Pin{
 		machine.GPIO0,
@@ -60,9 +60,9 @@ func blinkBuiltInLed() {
 	led.Configure(machine.PinConfig{Mode: machine.PinOutput})
 
 	for {
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 		led.High()
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 		led.Low()
 	}
 }
@@ -107,16 +107,6 @@ func main() {
 
 	ws.WriteColors(leds[:])
 
-	machine.InitADC()
-	sensorA := machine.ADC{Pin: machine.ADC0}
-	sensorA.Configure(machine.ADCConfig{})
-
-	sensorB := machine.ADC{Pin: machine.ADC1}
-	sensorB.Configure(machine.ADCConfig{})
-
-	sensorC := machine.ADC{Pin: machine.ADC2}
-	sensorC.Configure(machine.ADCConfig{})
-
 	go blinkBuiltInLed()
 
 	m := midi.New()
@@ -135,7 +125,7 @@ func main() {
 
 		if c.Change() == matrix.CellRising {
 			fmt.Println("CallBack CellRising")
-			err := m.NoteOff(0, 1, notes[c.ID()], 0x40)
+			err := m.NoteOff(0, 1, notes[c.ID()], 0x0)
 
 			if err != nil {
 				fmt.Println(err)
@@ -143,27 +133,10 @@ func main() {
 		}
 	})
 
-	mesh.Scan()
+	go mesh.Scan()
 
 	for oldValue := 0; ; {
-		adc0Value := float64(sensorA.Get()) * voltage
-		adc1Value := float64(sensorB.Get()) * voltage
-		adc2Value := float64(sensorC.Get()) * voltage
-
-		if adc0Value > noiseADC {
-			fmt.Println("Valor ADC sensorA: ", adc0Value)
-
-		}
-
-		if adc1Value > noiseADC {
-			fmt.Println("Valor ADC sensorB: ", adc1Value)
-
-		}
-
-		if adc2Value > noiseADC {
-			fmt.Println("Valor ADC sensorC: ", adc2Value)
-
-		}
+		go potentiometer.Scan()
 
 		// fmt.Println("SW Encoder: ", !sw.Get())
 
