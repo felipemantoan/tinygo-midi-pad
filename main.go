@@ -36,11 +36,11 @@ var (
 	noiseADC = 0.025
 )
 
-var notes = [4][4]midi.Note{
-	{midi.C1, midi.C2, midi.C3, midi.C4},
-	{midi.D1, midi.D2, midi.D3, midi.D4},
-	{midi.E1, midi.E2, midi.E3, midi.E4},
-	{midi.F1, midi.F2, midi.F3, midi.F4},
+var notes = [16]midi.Note{
+	midi.C1, midi.C2, midi.C3, midi.C4,
+	midi.D1, midi.D2, midi.D3, midi.D4,
+	midi.E1, midi.E2, midi.E3, midi.E4,
+	midi.F1, midi.F2, midi.F3, midi.F4,
 }
 
 func blinkBuiltInLed() {
@@ -107,8 +107,31 @@ func main() {
 
 	go blinkBuiltInLed()
 
-	matrix := matrix.New(matrix.Configure(rows[:], columns[:]))
-	matrix.Scan()
+	m := midi.New()
+
+	mesh := matrix.New(matrix.Configure(rows[:], columns[:]))
+	mesh.SetInterrupt(matrix.CellFalling, func(c matrix.Cell) {
+
+		if c.Change() == matrix.CellFalling {
+			fmt.Println("CallBack CellFalling") // call to action
+			err := m.NoteOn(0, 1, notes[c.ID()], 0x40)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+		if c.Change() == matrix.CellRising {
+			fmt.Println("CallBack CellRising")
+			err := m.NoteOff(0, 1, notes[c.ID()], 0x40)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	})
+
+	mesh.Scan()
 
 	for oldValue := 0; ; {
 		adc0Value := float64(sensorA.Get()) * voltage

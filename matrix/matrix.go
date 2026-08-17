@@ -11,11 +11,14 @@ type Matrix interface {
 	Config() MatrixConfig
 	Cell(column int, row int) Cell
 	Scan()
+	SetInterrupt(change CellChange, callback func(c Cell))
 }
 
 type matrixImpl struct {
-	cells  [][]Cell
-	config MatrixConfig
+	cells        [][]Cell
+	config       MatrixConfig
+	callback     func(c Cell)
+	callBackType CellChange
 }
 
 func New(config MatrixConfig) Matrix {
@@ -53,15 +56,26 @@ func (m *matrixImpl) scanMainLoop() {
 			time.Sleep(SCAN_TIME)
 
 			for j := range m.config.Rows() {
-
-				if m.Cell(j, i).HasChange() {
-					// debug
-					fmt.Println(m.Cell(j, i).ID()) // call to action
-				}
+				m.interrupt(j, i)
 			}
 
 			column.Low()
 		}
+	}
+}
+
+func (m *matrixImpl) SetInterrupt(change CellChange, callback func(c Cell)) {
+	m.callBackType = change
+	m.callback = callback
+}
+
+func (m *matrixImpl) interrupt(row int, column int) {
+	cell := m.Cell(row, column)
+
+	if cell.HasChange() {
+		fmt.Println(cell.ID()) // call to action
+		m.callback(cell)
+		// debug
 	}
 }
 

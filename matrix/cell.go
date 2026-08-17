@@ -16,16 +16,22 @@ const (
 
 type Cell interface {
 	ID() int
+	Change() CellChange
 	IsActivated() bool
-	State() bool
 	HasChange() bool
+	State() bool
 }
 
 type cellImpl struct {
 	id     int
+	change CellChange
 	column machine.Pin
 	row    machine.Pin
 	state  bool
+}
+
+func (c *cellImpl) Change() CellChange {
+	return c.change
 }
 
 func (c *cellImpl) HasChange() bool {
@@ -37,10 +43,12 @@ func (c *cellImpl) HasChange() bool {
 		// temos um novo estatdo mas qual?
 		if oldState == false && newState == true {
 			c.state = true
+			c.change = CellFalling
 			return true
 		}
 
 		c.state = false
+		c.change = CellRising
 		return true
 		// CellRising
 	}
@@ -61,9 +69,5 @@ func (c *cellImpl) ID() int {
 }
 
 func newCell(id int, column machine.Pin, row machine.Pin) Cell {
-	return &cellImpl{id: id, column: column, row: row, state: false}
-}
-
-func (c *cellImpl) SetInterrupt(change CellChange, callback func(c Cell)) {
-	// switch && save callback
+	return &cellImpl{id: id, change: CellFalling, column: column, row: row, state: false}
 }
