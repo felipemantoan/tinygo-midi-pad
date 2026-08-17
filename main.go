@@ -37,6 +37,13 @@ var (
 )
 
 var notes = [16]midi.Note{
+	midi.C2,
+	midi.D2,
+	midi.E2,
+	midi.F2,
+	midi.G2,
+	midi.A2,
+	midi.B2,
 	midi.C3,
 	midi.D3,
 	midi.E3,
@@ -44,15 +51,8 @@ var notes = [16]midi.Note{
 	midi.G3,
 	midi.A3,
 	midi.B3,
-	midi.C4,
-	midi.D4,
-	midi.E4,
-	midi.F4,
-	midi.G4,
-	midi.A4,
-	midi.B4,
-	midi.C5,
-	midi.D5,
+	midi.CS3,
+	midi.AS3,
 }
 
 func blinkBuiltInLed() {
