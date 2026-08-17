@@ -1,7 +1,6 @@
 package matrix
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -56,7 +55,9 @@ func (m *matrixImpl) scanMainLoop() {
 			time.Sleep(SCAN_TIME)
 
 			for j := range m.config.Rows() {
-				m.interrupt(j, i)
+				if m.callback != nil {
+					m.interrupt(j, i)
+				}
 			}
 
 			column.Low()
@@ -72,10 +73,8 @@ func (m *matrixImpl) SetInterrupt(change CellChange, callback func(c Cell)) {
 func (m *matrixImpl) interrupt(row int, column int) {
 	cell := m.Cell(row, column)
 
-	if cell.HasChange() {
-		fmt.Println(cell.ID()) // call to action
+	if cell.HasChange() && m.callback != nil {
 		m.callback(cell)
-		// debug
 	}
 }
 

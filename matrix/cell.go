@@ -35,22 +35,18 @@ func (c *cellImpl) Change() CellChange {
 }
 
 func (c *cellImpl) HasChange() bool {
-	// Daria pra fazer em 1 linha
 	oldState := c.State()
 	newState := c.IsActivated()
 
 	if oldState != newState {
-		// temos um novo estatdo mas qual?
 		if oldState == false && newState == true {
 			c.state = true
 			c.change = CellFalling
-			return true
+		} else {
+			c.state = false
+			c.change = CellRising
 		}
-
-		c.state = false
-		c.change = CellRising
 		return true
-		// CellRising
 	}
 
 	return false
@@ -69,5 +65,5 @@ func (c *cellImpl) ID() int {
 }
 
 func newCell(id int, column machine.Pin, row machine.Pin) Cell {
-	return &cellImpl{id: id, change: CellFalling, column: column, row: row, state: false}
+	return &cellImpl{id: id, change: CellToggle, column: column, row: row, state: false}
 }
