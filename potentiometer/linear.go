@@ -1,41 +1,113 @@
 package potentiometer
 
 import (
-	"fmt"
 	"machine"
 )
 
-var (
-	voltage = 3.3 / 65535
+type PotLinearShape uint8
 
-	ADCConfig = machine.ADCConfig{
-		Reference: 33000,
-	}
-
-	ADCPins = []machine.ADC{
-		machine.ADC{Pin: machine.ADC0},
-		machine.ADC{Pin: machine.ADC1},
-		machine.ADC{Pin: machine.ADC2},
-	}
+const (
+	RotaryPotShape PotLinearShape = 4 << iota
+	SlidePotShape
 )
 
-func initPins() []machine.ADC {
-	machine.InitADC()
+type PotLinearChange uint8
 
-	for _, pin := range ADCPins {
-		pin.Configure(ADCConfig)
-	}
+// PotLinear change interrupt constants for SetInterrupt.
+const (
+	PotLinearClockWise     PotLinearChange = 4 << iota
+	PotLinearAntiClockWise PotLinearChange = 3 << iota
+	PotLinearUp            PotLinearChange = 2 << iota
+	PotLinearDown
+	PotLinearRest = PotLinearClockWise | PotLinearAntiClockWise | PotLinearUp | PotLinearDown
+)
 
-	return ADCPins
+var (
+	isInitialized = false
+)
+
+type PotLinear interface {
+	ID() int
+	Change() PotLinearChange
+	HasChange() bool
+	Pin() machine.ADC
+	SetInterrupt(change PotLinearChange, callback func(pot PotLinear))
+	Shape() PotLinearShape
+	Value() uint16
 }
 
-func Scan() {
-	pins := initPins()
+type Device struct {
+	id       int
+	callback func(pot PotLinear)
+	change   PotLinearChange
+	pin      machine.ADC
+	shape    PotLinearShape
+	value    uint16
+}
 
-	for i, pin := range pins {
-		pinValue := pin.Get() >> 9
-		if pinValue > 5 {
-			fmt.Println("Pin: ", i, " Value: ", pinValue)
+func (ptl *Device) SetInterrupt(change PotLinearChange, callback func(pot PotLinear)) {
+	ptl.callback = callback
+}
+
+func (ptl *Device) Change() PotLinearChange {
+	return ptl.change
+}
+
+func (ptl *Device) Shape() PotLinearShape {
+	return ptl.shape
+}
+
+func (ptl *Device) HasChange() bool {
+
+	newValue := ptl.Pin().Get() >> 9
+
+	if ptl.value != newValue {
+		if ptl.value < newValue {
+			if ptl.shape == RotaryPotShape { // switch
+				ptl.change = PotLinearClockWise
+			} else {
+				ptl.change = PotLinearDown
+			}
+		} else {
+			if ptl.shape == RotaryPotShape { // switch
+				ptl.change = PotLinearAntiClockWise
+			} else {
+				ptl.change = PotLinearUp
+			}
 		}
+		ptl.value = newValue
+		return true
+	}
+
+	return false
+}
+
+func (ptl *Device) ID() int {
+	return ptl.id
+}
+
+func (ptl *Device) Pin() machine.ADC {
+	return ptl.pin
+}
+
+func (ptl *Device) Value() uint16 {
+	return ptl.value
+}
+
+func New(pin machine.ADC, config machine.ADCConfig, shape PotLinearShape) PotLinear {
+
+	if !isInitialized {
+		machine.InitADC()
+		isInitialized = true
+	}
+
+	pin.Configure(config)
+
+	return &Device{
+		id:     int(pin.Pin),
+		change: PotLinearRest,
+		pin:    pin,
+		shape:  shape,
+		value:  pin.Get() >> 9,
 	}
 }

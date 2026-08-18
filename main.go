@@ -5,7 +5,6 @@ import (
 	"image/color"
 	"machine"
 	"machine/usb/adc/midi"
-	"strconv"
 	"time"
 
 	"github.com/felipemantoan/tinygo-midi-pad/matrix"
@@ -13,14 +12,17 @@ import (
 	"tinygo.org/x/drivers/encoders"
 	"tinygo.org/x/drivers/ssd1306"
 	"tinygo.org/x/drivers/ws2812"
-	"tinygo.org/x/tinyfont"
-	"tinygo.org/x/tinyfont/freesans"
 )
 
 var (
 	neo     machine.Pin
 	leds    [2]color.RGBA
 	enc     = encoders.NewQuadratureViaInterrupt(machine.GPIO19, machine.GPIO20)
+	ADCPins = []machine.ADC{
+		machine.ADC{Pin: machine.ADC0},
+		machine.ADC{Pin: machine.ADC1},
+		machine.ADC{Pin: machine.ADC2},
+	}
 	columns = [4]machine.Pin{
 		machine.GPIO0,
 		machine.GPIO1,
@@ -135,20 +137,37 @@ func main() {
 
 	go mesh.Scan()
 
-	for oldValue := 0; ; {
-		go potentiometer.Scan()
+	pots := make([]potentiometer.PotLinear, len(ADCPins))
 
-		// fmt.Println("SW Encoder: ", !sw.Get())
-
-		if newValue := enc.Position(); newValue != oldValue {
-			device.ClearDisplay()
-			oldValue = newValue
-		}
-		device.Display()
-
-		tinyfont.WriteLine(device, &freesans.Bold18pt7b, 0, 31, strconv.Itoa(oldValue), color.RGBA{255, 255, 255, 1})
-		// fmt.Println("value: ", oldValue)
-		time.Sleep(10 * time.Millisecond)
-
+	for i, adcPin := range ADCPins {
+		pots[i] = potentiometer.New(adcPin, machine.ADCConfig{}, potentiometer.RotaryPotShape)
 	}
+
+	for {
+
+		for i, pot := range pots {
+			if pot.HasChange() {
+				fmt.Println("Pot:", i, ", Value:", pot.Value(), ", Change: ", pot.Change())
+			}
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	// for oldValue := 0; ; {
+	// 	// go potentiometer.Scan()
+
+	// 	// fmt.Println("SW Encoder: ", !sw.Get())
+
+	// 	if newValue := enc.Position(); newValue != oldValue {
+	// 		device.ClearDisplay()
+	// 		oldValue = newValue
+	// 	}
+	// 	device.Display()
+
+	// 	tinyfont.WriteLine(device, &freesans.Bold18pt7b, 0, 31, strconv.Itoa(oldValue), color.RGBA{255, 255, 255, 1})
+	// 	// fmt.Println("value: ", oldValue)
+	// 	time.Sleep(10 * time.Millisecond)
+
+	// }
 }
