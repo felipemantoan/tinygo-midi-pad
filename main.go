@@ -151,7 +151,7 @@ func main() {
 			}
 		}
 
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(60 * time.Millisecond)
 	}
 
 	// for oldValue := 0; ; {

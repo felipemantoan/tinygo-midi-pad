@@ -1,7 +1,6 @@
 package potentiometer
 
 import (
-	"fmt"
 	"machine"
 )
 
@@ -78,7 +77,6 @@ func (ptl *Device) HasChange() bool {
 			}
 		}
 		ptl.value = newValue
-		fmt.Println(ptl.Pin().Get())
 		return true
 	}
 
