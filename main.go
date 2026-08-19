@@ -140,7 +140,7 @@ func main() {
 	pots := make([]potentiometer.PotLinear, len(ADCPins))
 
 	for i, adcPin := range ADCPins {
-		pots[i] = potentiometer.New(adcPin, machine.ADCConfig{}, potentiometer.RotaryPotShape)
+		pots[i] = potentiometer.New(adcPin, potentiometer.RotaryPotShape, 9)
 	}
 
 	for {
