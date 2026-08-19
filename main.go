@@ -143,10 +143,15 @@ func main() {
 		pots[i] = potentiometer.New(adcPin, potentiometer.RotaryPotShape, 9)
 	}
 
+	controls := []uint8{
+		11, 91, 93,
+	}
+
 	for {
 
 		for i, pot := range pots {
 			if pot.HasChange() {
+				m.ControlChange(0, 1, controls[i], uint8(pot.Value()))
 				fmt.Println("Pot:", i, ", Value:", pot.Value(), ", Change: ", pot.Change())
 			}
 		}
