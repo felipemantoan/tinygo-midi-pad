@@ -1,6 +1,7 @@
 package potentiometer
 
 import (
+	"fmt"
 	"machine"
 )
 
@@ -37,12 +38,13 @@ type PotLinear interface {
 }
 
 type Device struct {
-	id       int
-	callback func(pot PotLinear)
-	change   PotLinearChange
-	pin      machine.ADC
-	shape    PotLinearShape
-	value    uint16
+	id         int
+	callback   func(pot PotLinear)
+	change     PotLinearChange
+	pin        machine.ADC
+	shape      PotLinearShape
+	shiftRight uint16
+	value      uint16
 }
 
 func (ptl *Device) SetInterrupt(change PotLinearChange, callback func(pot PotLinear)) {
@@ -59,7 +61,7 @@ func (ptl *Device) Shape() PotLinearShape {
 
 func (ptl *Device) HasChange() bool {
 
-	newValue := ptl.Pin().Get() >> 9
+	newValue := ptl.Pin().Get() >> ptl.shiftRight
 
 	if ptl.value != newValue {
 		if ptl.value < newValue {
@@ -76,6 +78,7 @@ func (ptl *Device) HasChange() bool {
 			}
 		}
 		ptl.value = newValue
+		fmt.Println(ptl.Pin().Get())
 		return true
 	}
 
@@ -94,20 +97,27 @@ func (ptl *Device) Value() uint16 {
 	return ptl.value
 }
 
-func New(pin machine.ADC, config machine.ADCConfig, shape PotLinearShape) PotLinear {
+func New(pin machine.ADC, shape PotLinearShape, shiftRight uint16) PotLinear {
 
 	if !isInitialized {
 		machine.InitADC()
 		isInitialized = true
 	}
 
-	pin.Configure(config)
+	pin.Configure(machine.ADCConfig{})
+
+	value := pin.Get()
+
+	if shiftRight > 0 {
+		value = pin.Get() >> shiftRight
+	}
 
 	return &Device{
-		id:     int(pin.Pin),
-		change: PotLinearRest,
-		pin:    pin,
-		shape:  shape,
-		value:  pin.Get() >> 9,
+		id:         int(pin.Pin),
+		change:     PotLinearRest,
+		pin:        pin,
+		shape:      shape,
+		shiftRight: shiftRight,
+		value:      value,
 	}
 }
