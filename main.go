@@ -1,14 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"machine"
 	"machine/usb/adc/midi"
 	"time"
 
-	"github.com/felipemantoan/tinygo-midi-pad/matrix"
-	"github.com/felipemantoan/tinygo-midi-pad/potentiometer"
+	"github.com/felipemantoan/tinygo-midi-pad/controller"
 	"tinygo.org/x/drivers/encoders"
 	"tinygo.org/x/drivers/ssd1306"
 	"tinygo.org/x/drivers/ws2812"
@@ -108,56 +106,8 @@ func main() {
 	leds[1] = color.RGBA{R: 255, G: 100, B: 0}
 
 	ws.WriteColors(leds[:])
-
-	go blinkBuiltInLed()
-
-	m := midi.New()
-
-	mesh := matrix.New(matrix.Configure(rows[:], columns[:]))
-	mesh.SetInterrupt(matrix.CellFalling, func(c matrix.Cell) {
-
-		if c.Change() == matrix.CellFalling {
-			fmt.Println("CallBack CellFalling") // call to action
-			err := m.NoteOn(0, 1, notes[c.ID()], 0x40)
-
-			if err != nil {
-				fmt.Println(err)
-			}
-		}
-
-		if c.Change() == matrix.CellRising {
-			fmt.Println("CallBack CellRising")
-			err := m.NoteOff(0, 1, notes[c.ID()], 0x0)
-
-			if err != nil {
-				fmt.Println(err)
-			}
-		}
-	})
-
-	go mesh.Scan()
-
-	pots := make([]potentiometer.PotLinear, len(ADCPins))
-
-	for i, adcPin := range ADCPins {
-		pots[i] = potentiometer.New(adcPin, potentiometer.RotaryPotShape, 9)
-	}
-
-	controls := []uint8{
-		11, 91, 93,
-	}
-
-	for {
-
-		for i, pot := range pots {
-			if pot.HasChange() {
-				m.ControlChange(0, 1, controls[i], uint8(pot.Value()))
-				fmt.Println("Pot:", i, ", Value:", pot.Value(), ", Change: ", pot.Change())
-			}
-		}
-
-		time.Sleep(60 * time.Millisecond)
-	}
+	controller.Controller()
+	blinkBuiltInLed()
 
 	// for oldValue := 0; ; {
 	// 	// go potentiometer.Scan()

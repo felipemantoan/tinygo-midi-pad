@@ -1,6 +1,8 @@
 package matrix
 
 import (
+	"errors"
+	"fmt"
 	"time"
 )
 
@@ -55,8 +57,9 @@ func (m *matrixImpl) scanMainLoop() {
 			time.Sleep(SCAN_TIME)
 
 			for j := range m.config.Rows() {
-				if m.callback != nil {
-					m.interrupt(j, i)
+				err := m.interrupt(j, i)
+				if err != nil {
+					fmt.Println(err)
 				}
 			}
 
@@ -70,14 +73,20 @@ func (m *matrixImpl) SetInterrupt(change CellChange, callback func(c Cell)) {
 	m.callback = callback
 }
 
-func (m *matrixImpl) interrupt(row int, column int) {
+func (m *matrixImpl) interrupt(row int, column int) error {
 	cell := m.Cell(row, column)
 
-	if cell.HasChange() && m.callback != nil {
+	if m.callback == nil {
+		return errors.New("Deu Problema")
+	}
+
+	if cell.HasChange() {
 		m.callback(cell)
 	}
+
+	return nil
 }
 
 func (m *matrixImpl) Scan() {
-	go m.scanMainLoop()
+	m.scanMainLoop()
 }
