@@ -50,6 +50,7 @@ var (
 		midi.CS3,
 		midi.AS3,
 	}
+	shiftRight = uint16(9)
 )
 
 func Controller() {
@@ -90,7 +91,14 @@ func CCs() {
 	pots := make([]potentiometer.PotLinear, len(adcPins))
 
 	for i, adcPin := range adcPins {
-		pots[i] = potentiometer.New(adcPin, potentiometer.RotaryPotShape, 9)
+
+		config := potentiometer.Configure(
+			adcPin,
+			potentiometer.RotaryPotShape,
+			shiftRight)
+
+		pots[i] = potentiometer.New(config)
+
 		pots[i].SetInterrupt(potentiometer.PotLinearToggle, func(pot potentiometer.PotLinear) {
 			if pot.HasChange() {
 				m.ControlChange(0, 1, controls[i], uint8(pot.Value())) // Tornar isso configurável

@@ -33,21 +33,23 @@ type PotLinear interface {
 	ID() int
 	Change() PotLinearChange
 	HasChange() bool
-	Pin() machine.ADC
 	Scan()
 	SetInterrupt(change PotLinearChange, callback func(pot PotLinear))
-	Shape() PotLinearShape
 	Value() uint16
 }
 
-type Device struct {
-	id         int
-	callback   func(pot PotLinear)
-	change     PotLinearChange
+type PotLinearConfig struct {
 	pin        machine.ADC
 	shape      PotLinearShape
 	shiftRight uint16
-	value      uint16
+}
+
+type Device struct {
+	id       int
+	callback func(pot PotLinear)
+	change   PotLinearChange
+	config   PotLinearConfig
+	value    uint16
 }
 
 func (ptl *Device) Scan() {
@@ -68,23 +70,19 @@ func (ptl *Device) Change() PotLinearChange {
 	return ptl.change
 }
 
-func (ptl *Device) Shape() PotLinearShape {
-	return ptl.shape
-}
-
 func (ptl *Device) HasChange() bool {
 
-	newValue := ptl.Pin().Get() >> ptl.shiftRight
+	newValue := ptl.config.pin.Get() >> ptl.config.shiftRight
 
 	if ptl.value != newValue {
 		if ptl.value < newValue {
-			if ptl.shape == RotaryPotShape { // switch
+			if ptl.config.shape == RotaryPotShape { // switch
 				ptl.change = PotLinearClockWise
 			} else {
 				ptl.change = PotLinearDown
 			}
 		} else {
-			if ptl.shape == RotaryPotShape { // switch
+			if ptl.config.shape == RotaryPotShape { // switch
 				ptl.change = PotLinearAntiClockWise
 			} else {
 				ptl.change = PotLinearUp
@@ -101,35 +99,37 @@ func (ptl *Device) ID() int {
 	return ptl.id
 }
 
-func (ptl *Device) Pin() machine.ADC {
-	return ptl.pin
-}
-
 func (ptl *Device) Value() uint16 {
 	return ptl.value
 }
 
-func New(pin machine.ADC, shape PotLinearShape, shiftRight uint16) PotLinear {
+func Configure(pin machine.ADC, shape PotLinearShape, shiftRight uint16) PotLinearConfig {
+	return PotLinearConfig{
+		pin:        pin,
+		shape:      shape,
+		shiftRight: shiftRight,
+	}
+}
+
+func New(config PotLinearConfig) PotLinear {
 
 	if !isInitialized {
 		machine.InitADC()
 		isInitialized = true
 	}
 
-	pin.Configure(machine.ADCConfig{})
+	config.pin.Configure(machine.ADCConfig{})
 
-	value := pin.Get()
+	value := config.pin.Get()
 
-	if shiftRight > 0 {
-		value = pin.Get() >> shiftRight
+	if config.shiftRight > 0 {
+		value = config.pin.Get() >> config.shiftRight
 	}
 
 	return &Device{
-		id:         int(pin.Pin),
-		change:     PotLinearRest,
-		pin:        pin,
-		shape:      shape,
-		shiftRight: shiftRight,
-		value:      value,
+		id:     int(config.pin.Pin),
+		change: PotLinearRest,
+		config: config,
+		value:  value,
 	}
 }
