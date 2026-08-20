@@ -1,7 +1,9 @@
 package potentiometer
 
 import (
+	"fmt"
 	"machine"
+	"time"
 )
 
 type PotLinearShape uint8
@@ -15,11 +17,12 @@ type PotLinearChange uint8
 
 // PotLinear change interrupt constants for SetInterrupt.
 const (
-	PotLinearClockWise     PotLinearChange = 4 << iota
-	PotLinearAntiClockWise PotLinearChange = 3 << iota
-	PotLinearUp            PotLinearChange = 2 << iota
+	PotLinearRest PotLinearChange = 4 << iota
+	PotLinearClockWise
+	PotLinearAntiClockWise
+	PotLinearUp
 	PotLinearDown
-	PotLinearRest = PotLinearClockWise | PotLinearAntiClockWise | PotLinearUp | PotLinearDown
+	PotLinearToggle = PotLinearClockWise | PotLinearAntiClockWise | PotLinearUp | PotLinearDown
 )
 
 var (
@@ -31,6 +34,7 @@ type PotLinear interface {
 	Change() PotLinearChange
 	HasChange() bool
 	Pin() machine.ADC
+	Scan()
 	SetInterrupt(change PotLinearChange, callback func(pot PotLinear))
 	Shape() PotLinearShape
 	Value() uint16
@@ -44,6 +48,16 @@ type Device struct {
 	shape      PotLinearShape
 	shiftRight uint16
 	value      uint16
+}
+
+func (ptl *Device) Scan() {
+	for {
+		if ptl.HasChange() {
+			fmt.Println("Pot:", ptl.id, ", Value:", ptl.Value(), ", Change: ", ptl.Change())
+			ptl.callback(ptl) //interrupt
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
 }
 
 func (ptl *Device) SetInterrupt(change PotLinearChange, callback func(pot PotLinear)) {

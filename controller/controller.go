@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"machine"
 	"machine/usb/adc/midi"
-	"time"
 
 	"github.com/felipemantoan/tinygo-midi-pad/matrix"
 	"github.com/felipemantoan/tinygo-midi-pad/potentiometer"
@@ -33,7 +32,7 @@ var (
 		machine.GPIO6,
 		machine.GPIO7,
 	}
-	notes = [16]midi.Note{
+	notes = []midi.Note{
 		midi.C2,
 		midi.D2,
 		midi.E2,
@@ -92,17 +91,12 @@ func CCs() {
 
 	for i, adcPin := range adcPins {
 		pots[i] = potentiometer.New(adcPin, potentiometer.RotaryPotShape, 9)
-	}
-
-	for {
-
-		for i, pot := range pots {
+		pots[i].SetInterrupt(potentiometer.PotLinearToggle, func(pot potentiometer.PotLinear) {
 			if pot.HasChange() {
 				m.ControlChange(0, 1, controls[i], uint8(pot.Value())) // Tornar isso configurável
-				fmt.Println("Pot:", i, ", Value:", pot.Value(), ", Change: ", pot.Change())
 			}
-		}
+		})
 
-		time.Sleep(20 * time.Millisecond)
+		go pots[i].Scan()
 	}
 }
