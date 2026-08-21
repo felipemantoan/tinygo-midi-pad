@@ -49,33 +49,39 @@ func (ptl *Device) HasChange() bool {
 
 	newValue := ptl.config.pin.Get() >> ptl.config.shiftRight
 
-	if ptl.value == newValue {
-		return false
+	hasChange := ptl.value != newValue
+
+	if hasChange {
+		ptl.change = determineMoviment(ptl.value, newValue, ptl.config.shape)
+		ptl.value = newValue
+		return true
 	}
 
-	ptl.value = newValue
-	ptl.determineMoviment(ptl.value < newValue)
+	return false
 
-	return true
 }
 
-func (ptl *Device) determineMoviment(asc bool) {
+func determineMoviment(oldValue, newValue uint16, shape PotLinearShape) PotLinearChange {
 
-	switch ptl.config.shape {
+	switch shape {
 	case RotaryPotShape:
-		if asc {
-			ptl.change = PotLinearClockWise
+
+		if oldValue < newValue {
+			return PotLinearClockWise
 		} else {
-			ptl.change = PotLinearAntiClockWise
+			return PotLinearAntiClockWise
 		}
-		break
+
 	case SlidePotShape:
-		if asc {
-			ptl.change = PotLinearDown
+		if oldValue < newValue {
+			return PotLinearDown
 		} else {
-			ptl.change = PotLinearUp
+			return PotLinearUp
 		}
-		break
+
+	default:
+		return PotLinearRest
+
 	}
 }
 
