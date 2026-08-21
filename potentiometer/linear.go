@@ -6,25 +6,6 @@ import (
 	"time"
 )
 
-type PotLinearShape uint8
-
-const (
-	RotaryPotShape PotLinearShape = 4 << iota
-	SlidePotShape
-)
-
-type PotLinearChange uint8
-
-// PotLinear change interrupt constants for SetInterrupt.
-const (
-	PotLinearRest PotLinearChange = 4 << iota
-	PotLinearClockWise
-	PotLinearAntiClockWise
-	PotLinearUp
-	PotLinearDown
-	PotLinearToggle = PotLinearClockWise | PotLinearAntiClockWise | PotLinearUp | PotLinearDown
-)
-
 var (
 	isInitialized = false
 )
@@ -36,12 +17,6 @@ type PotLinear interface {
 	Scan()
 	SetInterrupt(change PotLinearChange, callback func(pot PotLinear))
 	Value() uint16
-}
-
-type PotLinearConfig struct {
-	pin        machine.ADC
-	shape      PotLinearShape
-	shiftRight uint16
 }
 
 type Device struct {
@@ -74,25 +49,34 @@ func (ptl *Device) HasChange() bool {
 
 	newValue := ptl.config.pin.Get() >> ptl.config.shiftRight
 
-	if ptl.value != newValue {
-		if ptl.value < newValue {
-			if ptl.config.shape == RotaryPotShape { // switch
-				ptl.change = PotLinearClockWise
-			} else {
-				ptl.change = PotLinearDown
-			}
-		} else {
-			if ptl.config.shape == RotaryPotShape { // switch
-				ptl.change = PotLinearAntiClockWise
-			} else {
-				ptl.change = PotLinearUp
-			}
-		}
-		ptl.value = newValue
-		return true
+	if ptl.value == newValue {
+		return false
 	}
 
-	return false
+	ptl.value = newValue
+	ptl.determineMoviment(ptl.value < newValue)
+
+	return true
+}
+
+func (ptl *Device) determineMoviment(asc bool) {
+
+	switch ptl.config.shape {
+	case RotaryPotShape:
+		if asc {
+			ptl.change = PotLinearClockWise
+		} else {
+			ptl.change = PotLinearAntiClockWise
+		}
+		break
+	case SlidePotShape:
+		if asc {
+			ptl.change = PotLinearDown
+		} else {
+			ptl.change = PotLinearUp
+		}
+		break
+	}
 }
 
 func (ptl *Device) ID() int {
@@ -101,14 +85,6 @@ func (ptl *Device) ID() int {
 
 func (ptl *Device) Value() uint16 {
 	return ptl.value
-}
-
-func Configure(pin machine.ADC, shape PotLinearShape, shiftRight uint16) PotLinearConfig {
-	return PotLinearConfig{
-		pin:        pin,
-		shape:      shape,
-		shiftRight: shiftRight,
-	}
 }
 
 func New(config PotLinearConfig) PotLinear {

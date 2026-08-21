@@ -1,59 +1,26 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"machine"
-	"machine/usb/adc/midi"
+	"strconv"
 	"time"
 
 	"github.com/felipemantoan/tinygo-midi-pad/controller"
 	"tinygo.org/x/drivers/encoders"
 	"tinygo.org/x/drivers/ssd1306"
 	"tinygo.org/x/drivers/ws2812"
+	"tinygo.org/x/tinyfont"
+	"tinygo.org/x/tinyfont/freesans"
 )
 
 var (
-	neo     machine.Pin
-	leds    [2]color.RGBA
-	enc     = encoders.NewQuadratureViaInterrupt(machine.GPIO19, machine.GPIO20)
-	ADCPins = []machine.ADC{
-		machine.ADC{Pin: machine.ADC0},
-		machine.ADC{Pin: machine.ADC1},
-		machine.ADC{Pin: machine.ADC2},
-	}
-	columns = [4]machine.Pin{
-		machine.GPIO0,
-		machine.GPIO1,
-		machine.GPIO2,
-		machine.GPIO3,
-	}
-	rows = [4]machine.Pin{
-		machine.GPIO4,
-		machine.GPIO5,
-		machine.GPIO6,
-		machine.GPIO7,
-	}
+	neo      machine.Pin
+	leds     [2]color.RGBA
+	enc      = encoders.NewQuadratureViaInterrupt(machine.GPIO19, machine.GPIO20)
 	noiseADC = 0.025
 )
-
-var notes = [16]midi.Note{
-	midi.C2,
-	midi.D2,
-	midi.E2,
-	midi.F2,
-	midi.G2,
-	midi.A2,
-	midi.B2,
-	midi.C3,
-	midi.D3,
-	midi.E3,
-	midi.F3,
-	midi.G3,
-	midi.A3,
-	midi.B3,
-	midi.CS3,
-	midi.AS3,
-}
 
 func blinkBuiltInLed() {
 	led := machine.LED
@@ -97,6 +64,10 @@ func main() {
 
 	sw := machine.GPIO21
 	sw.Configure(machine.PinConfig{Mode: machine.PinInputPullup})
+	sw.SetInterrupt(machine.PinFalling, func(p machine.Pin) {
+		fmt.Println("SW Encoder: ", !sw.Get())
+
+	})
 
 	neo := machine.GPIO18
 	neo.Configure(machine.PinConfig{Mode: machine.PinOutput})
@@ -107,22 +78,19 @@ func main() {
 
 	ws.WriteColors(leds[:])
 	controller.Controller()
-	blinkBuiltInLed()
+	go blinkBuiltInLed()
 
-	// for oldValue := 0; ; {
-	// 	// go potentiometer.Scan()
+	for oldValue := 0; ; {
 
-	// 	// fmt.Println("SW Encoder: ", !sw.Get())
+		if newValue := enc.Position(); newValue != oldValue {
+			device.ClearDisplay()
+			oldValue = newValue
+		}
+		device.Display()
 
-	// 	if newValue := enc.Position(); newValue != oldValue {
-	// 		device.ClearDisplay()
-	// 		oldValue = newValue
-	// 	}
-	// 	device.Display()
+		tinyfont.WriteLine(device, &freesans.Bold18pt7b, 0, 31, strconv.Itoa(oldValue), color.RGBA{255, 255, 255, 1})
+		// fmt.Println("value: ", oldValue)
+		time.Sleep(10 * time.Millisecond)
 
-	// 	tinyfont.WriteLine(device, &freesans.Bold18pt7b, 0, 31, strconv.Itoa(oldValue), color.RGBA{255, 255, 255, 1})
-	// 	// fmt.Println("value: ", oldValue)
-	// 	time.Sleep(10 * time.Millisecond)
-
-	// }
+	}
 }
